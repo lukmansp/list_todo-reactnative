@@ -1,63 +1,130 @@
-import React from 'react'
-import { StyleSheet, Text, View, TouchableOpacity, FlatList, Modal } from "react-native"
-import colors from './Colors'
-import AntDesign from 'react-native-vector-icons/AntDesign'
-import tempData from './tempData'
-import TodoList from './components/TodoList'
-import AddListModal from './components/addListModal'
-
+import React from 'react';
+import {
+  StyleSheet,
+  Text,
+  View,
+  TouchableOpacity,
+  FlatList,
+  Modal,
+  ActivityIndicator,
+} from 'react-native';
+import colors from './Colors';
+import AntDesign from 'react-native-vector-icons/AntDesign';
+import TodoList from './components/TodoList';
+import AddListModal from './components/addListModal';
+import Fire from './Fire';
 export default class App extends React.Component {
   state = {
-    addToVisible: false
+    addToVisible: false,
+    lists: [],
+    user: {},
+    loading: true,
+  };
+  componentDidMount() {
+    firebase = new Fire((error, user) => {
+      if (error) {
+        return alert('something went wrong');
+      }
+      firebase.getLists((lists) => {
+        this.setState({lists, user}, () => {
+          this.setState({loading: false});
+        });
+      });
+      this.setState({user});
+    });
+  }
+
+  componentWillUnmount() {
+    firebase.detach();
   }
   toggleAddToModal() {
-    this.setState({ addToVisible: !this.state.addToVisible })
+    this.setState({addToVisible: !this.state.addToVisible});
   }
+  renderList = (list) => {
+    return <TodoList list={list} updateList={this.updateList} />;
+  };
+  addList = (list) => {
+    firebase.addList({
+      name: list.name,
+      color: list.color,
+      todos: [],
+    });
+  };
+  updateList = (list) => {
+    firebase.updateList(list);
+  };
   render() {
+    console.log(this.state.user.uid);
+
+    if (this.state.loading) {
+      return (
+        <View>
+          <ActivityIndicator size="large" color={colors.blue} />
+        </View>
+      );
+    }
     return (
       <View style={styles.container}>
-        <Modal animationType="slide" visible={this.state.addToVisible} onRequestClose={() => this.toggleAddToModal()}>
-          <AddListModal closeModal={() => this.toggleAddToModal()} />
+        <Modal
+          animationType="slide"
+          visible={this.state.addToVisible}
+          onRequestClose={() => this.toggleAddToModal()}>
+          <AddListModal
+            closeModal={() => this.toggleAddToModal()}
+            addList={this.addList}
+          />
         </Modal>
-        <View style={{ flexDirection: 'row' }}>
+        <View>
+          <Text>User: {this.state.user.uid}</Text>
+        </View>
+        <View style={{flexDirection: 'row'}}>
           <View style={styles.divider} />
           <Text style={styles.title}>
-            Todo <Text style={{ fontWeight: 'bold', color: colors.blue }}>List</Text>
+            Todo{' '}
+            <Text style={{fontWeight: 'bold', color: colors.blue}}>List</Text>
           </Text>
           <View style={styles.divider} />
         </View>
-        <View style={{ marginVertical: 48 }}>
-          <TouchableOpacity style={styles.addList} onPress={() => this.toggleAddToModal()}>
+        <View style={{marginVertical: 48}}>
+          <TouchableOpacity
+            style={styles.addList}
+            onPress={() => this.toggleAddToModal()}>
             <AntDesign name="plus" size={16} color={colors.blue} />
           </TouchableOpacity>
           <Text style={styles.add}>Add List</Text>
         </View>
-        <View style={{ height: 275, paddingLeft: 32 }}>
-          <FlatList data={tempData} keyExtractor={item => item.name} horizontal={true} showsHorizontalScrollIndicator={false}
-            renderItem={({ item }) => <TodoList list={item} />} />
+        <View style={{height: 275, paddingLeft: 32}}>
+          <FlatList
+            data={this.state.lists}
+            keyExtractor={(item) => item.id.toString()}
+            horizontal={true}
+            showsHorizontalScrollIndicator={false}
+            renderItem={({item}) => this.renderList(item)}
+            keyboardShouldPersistTaps="always"
+          />
         </View>
       </View>
-    )
+    );
   }
 }
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: '#fff',
     alignItems: 'center',
-    justifyContent: 'center'
+    justifyContent: 'center',
   },
   divider: {
     backgroundColor: colors.lightblue,
     height: 1,
     flex: 1,
-    alignSelf: 'center'
+    alignSelf: 'center',
   },
   title: {
     fontSize: 30,
     fontWeight: '600',
     color: colors.black,
-    paddingHorizontal: 64
+    paddingHorizontal: 64,
   },
   addList: {
     borderWidth: 2,
@@ -65,12 +132,12 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     padding: 16,
     alignItems: 'center',
-    justifyContent: 'center'
+    justifyContent: 'center',
   },
   add: {
     color: colors.blue,
     fontWeight: '600',
     fontSize: 14,
-    marginTop: 5
-  }
-})
+    marginTop: 5,
+  },
+});
